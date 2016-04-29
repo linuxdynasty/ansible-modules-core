@@ -80,13 +80,13 @@ options:
     version_added: "1.9"
   validate_certs:
     description:
-      - This only applies if using a https url as the source of the keys. If set to C(no), the SSL certificates will not be validated. 
-      - This should only set to C(no) used on personally controlled sites using self-signed certificates as it avoids verifying the source site. 
+      - This only applies if using a https url as the source of the keys. If set to C(no), the SSL certificates will not be validated.
+      - This should only set to C(no) used on personally controlled sites using self-signed certificates as it avoids verifying the source site.
       - Prior to 2.1 the code worked as if this was set to C(yes).
     required: false
     default: "yes"
     choices: ["yes", "no"]
-    version_added: "2.1" 
+    version_added: "2.1"
 author: "Ansible Core Team"
 '''
 
@@ -161,7 +161,7 @@ class keydict(dict):
     def __iter__(self):
         return iter(self.itemlist)
     def keys(self):
-        return self.itemlist
+        return list(set(self.itemlist))
     def values(self):
         return [self[key] for key in self]
     def itervalues(self):
@@ -245,7 +245,13 @@ def parseoptions(module, options):
             for part in parts:
                 if "=" in part:
                     (key, value) = part.split("=", 1)
-                    options_dict[key] = value
+                    if options_dict.has_key(key):
+                        if isinstance(options_dict[key], list):
+                            options_dict[key].append(value)
+                        else:
+                            options_dict[key] = [options_dict[key], value]
+                    else:
+                        options_dict[key] = value
                 elif part != ",":
                     options_dict[part] = None
         except:
@@ -339,10 +345,13 @@ def writekeys(module, filename, keys):
                     option_strings = []
                     for option_key in options.keys():
                         if options[option_key]:
-                            option_strings.append("%s=%s" % (option_key, options[option_key]))
+                            if isinstance(options[option_key], list):
+                                for value in options[option_key]:
+                                    option_strings.append("%s=%s" % (option_key, value))
+                            else:
+                                option_strings.append("%s=%s" % (option_key, options[option_key]))
                         else:
                             option_strings.append("%s" % option_key)
-
                     option_str = ",".join(option_strings)
                     option_str += " "
                 key_line = "%s%s %s %s\n" % (option_str, type, keyhash, comment)
